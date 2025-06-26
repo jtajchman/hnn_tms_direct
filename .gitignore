@@ -2,9 +2,10 @@
 dpl.txt
 hnn_core/mod/x86_64/
 hnn_core/mod/arm64/
-hnn_core/mod/*.c
-hnn_core/mod/*.o
-hnn_core/mod/*.dll
+# Ignore everything in the mod folder
+hnn_core/mod/*
+# Except the mod files
+!hnn_core/mod/*.mod
 
 # Distribution / packaging
 .Python
