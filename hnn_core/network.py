@@ -1295,6 +1295,8 @@ class Network:
         amplitude,
         t0=0,
         tstop=None,
+        probability=1.0,
+        bias_seed=3,
     ):
         """Attaches parameters of tonic bias input for given cell types
 
@@ -1345,18 +1347,35 @@ class Network:
                 amplitude=float(amplitude),
                 t_0=t0,
                 t_stop=tstop,
+                probability=probability,
+                bias_seed=bias_seed,
             )
         else:
-            _validate_type(amplitude, dict, "amplitude")
-            if len(amplitude) == 0:
+            _validate_type(amplitude, (float, dict), "amplitude")
+            _validate_type(probability, (float, dict), "probability")
+            if isinstance(amplitude, float):
+                # single amplitude for all cell types
+                amplitude = {cell_type: float(amplitude) for cell_type in self.cell_types}
+            if isinstance(probability, float):
+                # single probability for all cell types
+                probability = {cell_type: float(probability) for cell_type in self.cell_types}
+
+            if len(amplitude) == 0 or len(probability) == 0:
                 warnings.warn(
                     "No bias have been defined, no action taken",
                     UserWarning,
                     stacklevel=1,
                 )
                 return
+            
+            if len(amplitude) != len(probability):
+                raise ValueError(
+                    "amplitude and probability must have the same number of "
+                    "cell types defined"
+                )
 
-            for _cell_type, _amplitude in amplitude.items():
+            seed_offset = 0
+            for (_cell_type, _amplitude), _probability in zip(amplitude.items(), probability.values()):
                 _add_cell_type_bias(
                     network=self,
                     cell_type=_cell_type,
@@ -1365,7 +1384,10 @@ class Network:
                     amplitude=_amplitude,
                     t_0=t0,
                     t_stop=tstop,
+                    probability=_probability,
+                    bias_seed=bias_seed + seed_offset,
                 )
+                seed_offset += 1
 
     def _add_cell_type(self, cell_name, pos, cell_template=None):
         """Add cell type by updating pos_dict and gid_ranges."""
@@ -1911,6 +1933,8 @@ def _add_cell_type_bias(
     bias_name="tonic",
     t_0=0,
     t_stop=None,
+    probability=1.0,
+    bias_seed=3,
 ):
     """Add a tonic bias to a specific cell type in the network.
 
@@ -1954,6 +1978,9 @@ def _add_cell_type_bias(
         "t0": t_0,
         "tstop": t_stop,
         "section": section,
+        "probability": probability,
+        "bias_seed": bias_seed,
+        "rng": np.random.default_rng(bias_seed), # Define rng for each bias to maintain reproducibility
     }
 
     sections = list(network.cell_types[cell_type].sections.keys())
