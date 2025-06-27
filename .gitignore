@@ -43,3 +43,6 @@ cover
 __pycache__
 
 *.log
+
+# windows scripts
+*.ps1
